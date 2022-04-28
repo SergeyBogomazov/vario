@@ -3,15 +3,20 @@ from math import exp, sin, cos
 import numpy as np
 from numpy.linalg import linalg
 
-N = 10
-D = np.zeros((N, N))
 
-Phi = np.zeros(N)
+def Y(x):  # точное решение
+    return (11 / 14) * x - (2 / (7 * (x ** 2))) + 1 / 2
 
-n = 200
 
-a, b = 0, 1
-x = np.linspace(a, b, n + 1);
+N = 3
+n = 100
+a, b = 1, 2
+h = (b - a) / n
+x = np.linspace(a, b, n + 1)
+y = np.zeros(n + 1)
+
+A = np.zeros((N, N))
+B = np.zeros(N)
 
 
 def phi_0(x):
@@ -25,60 +30,54 @@ def phi_0_(x):
 def phi_k(x, k):
     if k == 0:
         return phi_0(x)
-    return (1 - x) * (x ** k)
+    return (1-x)*(2-x)*(x**(k-1))
 
 
 def phi_k_(x, k):
     if k == 0:
-        return phi_0_(x)
-    return k * (x ** (k - 1)) - (k + 1) * (x ** k)
-
-
-def intOne(x, i, j):
-    return (x**2) * phi_k_(x, i) * phi_k_(x, j)
-
-
-def intTwo(x, i, j):
-    return (x**2) * phi_k(x, i) * phi_k(x, j)
+        return phi_0(x)
+    return (2*x-3)*(x**(k-1)) + (1-x)*(2-x)*(k-1)*(x**(k-1))
 
 
 def intOneTwo(x, i, j):
-    return intOne(x, i, j) + intTwo(x, i, j)
+    return (x ** 2) * phi_k_(x, i) * phi_k_(x, j) + 2 * phi_k(x, i) * phi_k(x, j)
+
+
+def integrateA(i, j):
+    sum = 0
+    for k in range(n):
+        sum += intOneTwo(x[k], i, j) * h
+
+    A[i, j] = sum
+
+
+def integrateB(i):
+    sum = 0
+    for k in range(n):
+        sum += (phi_k(x[k], i) - intOneTwo(x[k], 0, i)) * h
+
+    B[i] = sum
 
 
 for i in range(N):
     for j in range(N):
-        nseg = 2 ** 10
-        dx = 1.0 * (b - a) / nseg
-        sum = 0.5 * (intOneTwo(a, i, j) + intOneTwo(b, i, j))
+        integrateA(i, j)
+    integrateB(i)
 
-        for ii in range(1, nseg):
-            sum += intOneTwo(a + ii * dx, i, j)
+C = linalg.solve(A, B)
 
-        D[i,j] =  sum * dx
 
-    nseg = 2 ** 10
-    dx = 1.0 * (b - a) / nseg
-    sum = 0.5 * (phi_k(a,i) + phi_k(b,i))
-
-    for ii in range(1, nseg):
-        sum += phi_k(a + ii * dx,i)
-
-    Phi[i] = sum * dx
-
-c = linalg.solve(D, Phi)
-
-def yyy(x):
+def sumPhi(i):
     sum = 0
-    for i in range(N):
-        sum += c[i]*phi_k(x,i)
-    return phi_0(x) + sum
+    for j in range(N):
+        sum += (C[j] * phi_k(x[i], j))
+    return sum
 
-y = np.zeros(n+1)
 
-for i in range(n+1):
-    y[i] = yyy(x[i])
+for i in range(n + 1):
+    y[i] = phi_0(x[i]) + sumPhi(i)
 
+plt.plot(x, [Y(x) for x in x], 'g')  # график точного решения
 plt.plot(x, y, 'r')
 
 plt.show()
